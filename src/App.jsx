@@ -9,10 +9,26 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const HDR = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
 const TBL = `${SB_URL}/rest/v1/usuarios`;
 
+// Normaliza campos JSONB que podem vir como string do Supabase
+function normalizar(u) {
+  const parse = (v, fallback) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === "string") { try { return JSON.parse(v); } catch(e) { return fallback; } }
+    return fallback;
+  };
+  return {
+    ...u,
+    meses:     parse(u.meses,     []),
+    medidores: parse(u.medidores, []),
+    _hist:     parse(u._hist,     []),
+  };
+}
+
 async function dbGetAll() {
   const r = await fetch(`${TBL}?select=*&order=usuario.asc`, { headers: HDR });
   if (!r.ok) throw new Error(await r.text());
-  return r.json();
+  const data = await r.json();
+  return data.map(normalizar);
 }
 async function dbSave(u) {
   const r = await fetch(TBL, {
