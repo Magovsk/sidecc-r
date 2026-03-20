@@ -922,7 +922,7 @@ export default function App(){
 
   const NAV=[{k:"dashboard",l:"Dashboard",i:"📊"},{k:"usuarios",l:"Usuários",i:"👥"},{k:"xml",l:"Gerar XML",i:"⚡"},{k:"relatorios",l:"Relatórios",i:"📋"}];
 
-  return <ErrorBoundary><div style={{fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif",background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column",width:"100%"}}>
+  return <ErrorBoundary><div style={{fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif",background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column",width:"100vw",overflowX:"hidden"}}>
     {/* Loading overlay */}
     {loading.show&&<Loading msg={loading.msg}/>}
 
@@ -949,7 +949,7 @@ export default function App(){
     </div>
 
     {/* MAIN */}
-    <div style={{flex:1,maxWidth:1400,margin:"0 auto",width:"100%",padding:"22px 20px"}}>
+    <div style={{flex:1,width:"100%",padding:"22px 28px"}}>
       <ErrBanner msg={errMsg} onClose={()=>setErrMsg("")}/>
       {screen==="dashboard"&&<Dashboard usuarios={usuarios} onNovo={()=>handleNovo()} onImport={()=>setShowImport(true)}/>}
       {screen==="usuarios"&&<Usuarios usuarios={usuarios}
