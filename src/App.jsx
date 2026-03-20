@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import * as XLSX from "xlsx";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -10,18 +10,22 @@ const HDR = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type":
 const TBL = `${SB_URL}/rest/v1/usuarios`;
 
 // Normaliza campos JSONB que podem vir como string do Supabase
+function parseJSONField(v, fallback) {
+  if (Array.isArray(v)) return v;
+  if (v === null || v === undefined) return fallback;
+  if (typeof v === "string") {
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p : fallback; } catch(e) { return fallback; }
+  }
+  return fallback;
+}
+function mesDefault() { return Array.from({length:12},(_,i)=>({n:i+1,v:"",h:"24",d:"30",s:"1"})); }
 function normalizar(u) {
-  const parse = (v, fallback) => {
-    if (Array.isArray(v)) return v;
-    if (typeof v === "string") { try { return JSON.parse(v); } catch(e) { return fallback; } }
-    return fallback;
-  };
-  return {
-    ...u,
-    meses:     parse(u.meses,     []),
-    medidores: parse(u.medidores, []),
-    _hist:     parse(u._hist,     []),
-  };
+  if (!u || typeof u !== "object") return u;
+  const meses     = parseJSONField(u.meses, mesDefault());
+  const medidores = parseJSONField(u.medidores, []);
+  const _hist     = parseJSONField(u._hist, []);
+  const mesNorm   = Array.isArray(meses) && meses.length === 12 ? meses : mesDefault();
+  return { ...u, meses: mesNorm, medidores, _hist };
 }
 
 async function dbGetAll() {
@@ -547,7 +551,14 @@ function Dashboard({usuarios,onNovo,onImport}){
   const exp =usuarios.filter(u=>u.status==="EXPERIMENTAL");
   const hist=usuarios.filter(u=>u.status==="HISTORICO");
   const alertas=useMemo(()=>[...op,...exp].map(u=>{const dias=diasAte(u.dtvalidade);const b=vencBadge(dias);return b?{u,dias,b}:null;}).filter(Boolean).sort((a,b)=>a.dias-b.dias),[usuarios]);
-  const recentes=useMemo(()=>usuarios.flatMap(u=>(u._hist||[]).map(h=>({...h,nome:u.identificacao,cod:u.usuario}))).sort((a,b)=>b.dt<a.dt?-1:1).slice(0,8),[usuarios]);
+  const recentes=useMemo(()=>{
+    try{
+      return usuarios.flatMap(u=>{
+        const hist=Array.isArray(u._hist)?u._hist:[];
+        return hist.map(h=>({...h,nome:u.identificacao||'',cod:u.usuario||''}));
+      }).sort((a,b)=>b.dt<a.dt?-1:1).slice(0,8);
+    }catch(e){return [];}
+  },[usuarios]);
   const nextOp=proxNum(usuarios,"OPERACIONAL"),nextExp=proxNum(usuarios,"EXPERIMENTAL");
   const slotsOp=Math.max(0,500-op.length),slotsExp=Math.max(0,500-exp.length);
   return <div>
@@ -774,6 +785,23 @@ function Relatorios({usuarios}){
 // ═══════════════════════════════════════════════════════════════════════
 //  APP ROOT
 // ═══════════════════════════════════════════════════════════════════════
+// Error Boundary para capturar erros de renderização
+class ErrorBoundary extends React.Component {
+  constructor(props){ super(props); this.state={hasError:false,error:null}; }
+  static getDerivedStateFromError(e){ return {hasError:true,error:e}; }
+  render(){
+    if(this.state.hasError){
+      return <div style={{padding:40,textAlign:"center",fontFamily:"sans-serif"}}>
+        <div style={{fontSize:36,marginBottom:16}}>⚠️</div>
+        <div style={{fontSize:18,fontWeight:700,color:"#dc2626",marginBottom:8}}>Erro ao carregar o sistema</div>
+        <div style={{fontSize:13,color:"#64748b",marginBottom:20,maxWidth:500,margin:"0 auto 20px"}}>{String(this.state.error?.message||this.state.error)}</div>
+        <button onClick={()=>window.location.reload()} style={{background:"#1a56db",color:"#fff",border:"none",borderRadius:8,padding:"10px 24px",fontSize:14,fontWeight:700,cursor:"pointer"}}>🔄 Recarregar</button>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
 export default function App(){
   const[screen,setScreen]=useState("dashboard");
   const[usuarios,setUsuarios]=useState([]);
@@ -894,7 +922,7 @@ export default function App(){
 
   const NAV=[{k:"dashboard",l:"Dashboard",i:"📊"},{k:"usuarios",l:"Usuários",i:"👥"},{k:"xml",l:"Gerar XML",i:"⚡"},{k:"relatorios",l:"Relatórios",i:"📋"}];
 
-  return <div style={{fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif",background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+  return <ErrorBoundary><div style={{fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif",background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
     {/* Loading overlay */}
     {loading.show&&<Loading msg={loading.msg}/>}
 
@@ -955,5 +983,5 @@ export default function App(){
       msg={`"${confirmData.nome}" (${confirmData.cod}) será removido permanentemente do banco. Para preservar o histórico, use 📦 em vez de remover.`}
       okLabel="Sim, remover" okV="danger"
       onOk={confirmarRemocao} onCancel={()=>setConfirmData(null)}/>}
-  </div>;
+  </div></ErrorBoundary>;
 }
