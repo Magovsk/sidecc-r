@@ -922,12 +922,12 @@ export default function App(){
 
   const NAV=[{k:"dashboard",l:"Dashboard",i:"📊"},{k:"usuarios",l:"Usuários",i:"👥"},{k:"xml",l:"Gerar XML",i:"⚡"},{k:"relatorios",l:"Relatórios",i:"📋"}];
 
-  return <ErrorBoundary><div style={{fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif",background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column"}}>
+  return <ErrorBoundary><div style={{fontFamily:"'IBM Plex Sans','Segoe UI',sans-serif",background:C.bg,minHeight:"100vh",display:"flex",flexDirection:"column",width:"100%"}}>
     {/* Loading overlay */}
     {loading.show&&<Loading msg={loading.msg}/>}
 
     {/* NAV */}
-    <div style={{background:`linear-gradient(90deg,${C.navy},${C.blue})`,height:56,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 24px",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 12px rgba(15,45,94,0.3)"}}>
+    <div style={{background:`linear-gradient(90deg,${C.navy},${C.blue})`,height:56,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 24px",position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 12px rgba(15,45,94,0.3)",width:"100%"}}>
       <div style={{display:"flex",alignItems:"center",gap:20}}>
         <div style={{color:"#fff",fontWeight:900,fontSize:18,letterSpacing:"-0.01em"}}>SiDeCC-R</div>
         <div style={{height:20,width:1,background:"rgba(255,255,255,0.2)"}}/>
