@@ -7,6 +7,24 @@ import * as XLSX from "xlsx";
 const SB_URL = "https://xrltpqfxcmyxbiocdtnn.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhybHRwcWZ4Y215eGJpb2NkdG5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTA2NDMsImV4cCI6MjA4OTQyNjY0M30.yD57yQxKuNCo5GSFPmfNLcZEoIeUGM21UYR8YwKzJLM";
 const HDR = { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json" };
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+async function authSignIn(email, password) {
+  const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { "apikey": SB_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error_description || data.msg || "Credenciais inválidas");
+  return data;
+}
+async function authSignOut(token) {
+  await fetch(`${SB_URL}/auth/v1/logout`, {
+    method: "POST",
+    headers: { "apikey": SB_KEY, "Authorization": `Bearer ${token}` },
+  });
+}
 const TBL = `${SB_URL}/rest/v1/usuarios`;
 
 // Normaliza campos JSONB que podem vir como string do Supabase
@@ -782,6 +800,120 @@ function Relatorios({usuarios}){
   </div>;
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+//  LOGIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════
+function LoginScreen({ onLogin }) {
+  const [email, setEmail]       = useState("");
+  const [senha, setSenha]       = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [erro, setErro]         = useState("");
+  const [showPass, setShowPass] = useState(false);
+
+  const handleLogin = async (e) => {
+    e && e.preventDefault();
+    if (!email || !senha) { setErro("Preencha o e-mail e a senha."); return; }
+    setLoading(true); setErro("");
+    try {
+      const data = await authSignIn(email, senha);
+      onLogin(data.access_token, data.user);
+    } catch(err) {
+      setErro(err.message || "E-mail ou senha incorretos.");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{
+      minHeight:"100vh", width:"100vw", background:`linear-gradient(135deg,${C.navy} 0%,${C.blue} 60%,#1e40af 100%)`,
+      display:"flex", alignItems:"center", justifyContent:"center", padding:20,
+    }}>
+      <div style={{
+        background:"#fff", borderRadius:20, width:"100%", maxWidth:420,
+        boxShadow:"0 24px 64px rgba(0,0,0,0.25)", overflow:"hidden",
+      }}>
+        {/* Header */}
+        <div style={{
+          background:`linear-gradient(135deg,${C.navy},${C.blue})`,
+          padding:"36px 32px 28px", textAlign:"center",
+        }}>
+          <div style={{
+            display:"inline-flex", alignItems:"center", justifyContent:"center",
+            width:64, height:64, borderRadius:16,
+            background:"rgba(255,255,255,0.15)", marginBottom:16,
+          }}>
+            <span style={{fontSize:32}}>💧</span>
+          </div>
+          <div style={{color:"#fff", fontSize:26, fontWeight:900, letterSpacing:"-0.02em"}}>SiDeCC-R</div>
+          <div style={{color:"rgba(255,255,255,0.7)", fontSize:13, marginTop:4}}>Sala de Situação PCJ · Controle de Outorgas</div>
+        </div>
+
+        {/* Form */}
+        <div style={{padding:"32px"}}>
+          <div style={{fontWeight:800, fontSize:16, color:C.text, marginBottom:6}}>Acesso ao sistema</div>
+          <div style={{fontSize:13, color:C.muted, marginBottom:24}}>Digite suas credenciais para continuar.</div>
+
+          {erro && (
+            <div style={{
+              background:C.redBg, color:C.red, border:`1px solid ${C.red}33`,
+              borderRadius:8, padding:"10px 14px", marginBottom:16,
+              fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:8,
+            }}>
+              ⚠️ {erro}
+            </div>
+          )}
+
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:11, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:5}}>E-mail</div>
+            <input
+              type="email" value={email} onChange={e=>setEmail(e.target.value)}
+              placeholder="email@exemplo.com.br"
+              onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+              style={{...inp, fontSize:14, padding:"11px 14px"}}
+            />
+          </div>
+
+          <div style={{marginBottom:24}}>
+            <div style={{fontSize:11, fontWeight:700, color:C.muted, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:5}}>Senha</div>
+            <div style={{position:"relative"}}>
+              <input
+                type={showPass?"text":"password"} value={senha} onChange={e=>setSenha(e.target.value)}
+                placeholder="••••••••"
+                onKeyDown={e=>e.key==="Enter"&&handleLogin()}
+                style={{...inp, fontSize:14, padding:"11px 44px 11px 14px"}}
+              />
+              <button onClick={()=>setShowPass(p=>!p)} style={{
+                position:"absolute", right:12, top:"50%", transform:"translateY(-50%)",
+                background:"none", border:"none", cursor:"pointer", color:C.muted, fontSize:16, padding:0,
+              }}>{showPass?"🙈":"👁"}</button>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogin} disabled={loading}
+            style={{
+              width:"100%", padding:"13px", borderRadius:10, border:"none",
+              background:loading?C.muted:`linear-gradient(135deg,${C.navy},${C.blue})`,
+              color:"#fff", fontSize:15, fontWeight:800, cursor:loading?"not-allowed":"pointer",
+              transition:"all 0.2s", letterSpacing:"0.02em",
+            }}
+          >
+            {loading ? "Autenticando..." : "Entrar"}
+          </button>
+
+          <div style={{
+            marginTop:24, padding:"12px 14px", background:C.blueSoft,
+            borderRadius:8, fontSize:12, color:C.blue, textAlign:"center",
+          }}>
+            🔒 Acesso restrito à equipe interna.<br/>Para solicitar acesso, contate o administrador.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 //  APP ROOT
 // ═══════════════════════════════════════════════════════════════════════
@@ -803,6 +935,21 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App(){
+  // ── Auth ──────────────────────────────────────────────────────────────
+  const[token,setToken]=useState(()=>sessionStorage.getItem("sidecc_token")||"");
+  const[authUser,setAuthUser]=useState(null);
+
+  const handleLogin=(tk,user)=>{
+    sessionStorage.setItem("sidecc_token", tk);
+    setToken(tk); setAuthUser(user);
+  };
+  const handleLogout=async()=>{
+    try{ await authSignOut(token); }catch(e){}
+    sessionStorage.removeItem("sidecc_token");
+    setToken(""); setAuthUser(null); setUsuarios([]);
+  };
+
+  // ── App State ─────────────────────────────────────────────────────────
   const[screen,setScreen]=useState("dashboard");
   const[usuarios,setUsuarios]=useState([]);
   const[loading,setLoading]=useState({show:false,msg:""});
@@ -814,6 +961,9 @@ export default function App(){
   const[auditoriaId,setAuditoriaId]=useState(null);
   const[confirmData,setConfirmData]=useState(null);
   const[showImport,setShowImport]=useState(false);
+
+  // Se não autenticado, mostra LoginScreen
+  if (!token) return <LoginScreen onLogin={handleLogin}/>;
 
   const load=(show,msg="")=>setLoading({show,msg});
   const msg=t=>{setSavedMsg(t);setTimeout(()=>setSavedMsg(""),3500);};
@@ -945,6 +1095,11 @@ export default function App(){
         <Btn onClick={()=>handleNovo("EXPERIMENTAL")} style={{background:"rgba(124,58,237,0.4)",color:"#fff",border:"none",padding:"6px 12px",fontSize:11}}>+ EXP</Btn>
         <Btn onClick={()=>handleNovo("OPERACIONAL")} style={{background:"rgba(5,150,105,0.4)",color:"#fff",border:"none",padding:"6px 12px",fontSize:11}}>+ OP</Btn>
         <span style={{color:"rgba(255,255,255,0.35)",fontSize:10}}>☁️ Supabase</span>
+        <button onClick={handleLogout} style={{
+          background:"rgba(220,38,38,0.25)",color:"#fff",
+          border:"1px solid rgba(220,38,38,0.4)",borderRadius:8,
+          padding:"5px 12px",fontSize:11,fontWeight:700,cursor:"pointer",marginLeft:4,
+        }} title="Sair do sistema">🚪 Sair</button>
       </div>
     </div>
 
