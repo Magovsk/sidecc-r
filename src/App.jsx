@@ -918,6 +918,28 @@ function LoginScreen({ onLogin }) {
 //  APP ROOT
 // ═══════════════════════════════════════════════════════════════════════
 // Error Boundary para capturar erros de renderização
+// ═══════════════════════════════════════════════════════════════════════
+//  ROOT — controla auth e renderiza LoginScreen ou AppMain
+// ═══════════════════════════════════════════════════════════════════════
+export default function App(){
+  const[token,setToken]=useState(()=>sessionStorage.getItem("sidecc_token")||"");
+  const[authUser,setAuthUser]=useState(null);
+
+  const handleLogin=(tk,user)=>{
+    sessionStorage.setItem("sidecc_token", tk);
+    setAuthUser(user);
+    setToken(tk);
+  };
+  const handleLogout=async()=>{
+    try{ await authSignOut(token); }catch(e){}
+    sessionStorage.removeItem("sidecc_token");
+    setToken(""); setAuthUser(null);
+  };
+
+  if(!token) return <LoginScreen onLogin={handleLogin}/>;
+  return <AppMain key={token} token={token} handleLogout={handleLogout}/>;
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props){ super(props); this.state={hasError:false,error:null}; }
   static getDerivedStateFromError(e){ return {hasError:true,error:e}; }
@@ -934,21 +956,7 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-export default function App(){
-  // ── Auth ──────────────────────────────────────────────────────────────
-  const[token,setToken]=useState(()=>sessionStorage.getItem("sidecc_token")||"");
-  const[authUser,setAuthUser]=useState(null);
-
-  const handleLogin=(tk,user)=>{
-    sessionStorage.setItem("sidecc_token", tk);
-    setToken(tk); setAuthUser(user);
-  };
-  const handleLogout=async()=>{
-    try{ await authSignOut(token); }catch(e){}
-    sessionStorage.removeItem("sidecc_token");
-    setToken(""); setAuthUser(null); setUsuarios([]);
-  };
-
+function AppMain({token, handleLogout}){
   // ── App State ─────────────────────────────────────────────────────────
   const[screen,setScreen]=useState("dashboard");
   const[usuarios,setUsuarios]=useState([]);
@@ -962,21 +970,19 @@ export default function App(){
   const[confirmData,setConfirmData]=useState(null);
   const[showImport,setShowImport]=useState(false);
 
-  // Se não autenticado, mostra LoginScreen
-  if (!token) return <LoginScreen onLogin={handleLogin}/>;
+
 
   const load=(show,msg="")=>setLoading({show,msg});
   const msg=t=>{setSavedMsg(t);setTimeout(()=>setSavedMsg(""),3500);};
   const err=e=>{setErrMsg(String(e?.message||e));load(false);};
 
-  // Carregar dados do Supabase quando autenticado
+  // Carregar dados ao montar (token já garantido pelo wrapper)
   useEffect(()=>{
-    if(!token) return; // só carrega se estiver logado
     load(true,"Carregando dados do banco...");
     dbGetAll()
       .then(data=>{ setUsuarios(data); load(false); })
       .catch(e=>{ err(e); });
-  },[token]); // roda toda vez que o token mudar (login)
+  },[]);
 
   // Salvar usuário no Supabase
   const salvarUsuario=useCallback(async d=>{
