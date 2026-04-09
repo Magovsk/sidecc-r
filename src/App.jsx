@@ -969,13 +969,14 @@ export default function App(){
   const msg=t=>{setSavedMsg(t);setTimeout(()=>setSavedMsg(""),3500);};
   const err=e=>{setErrMsg(String(e?.message||e));load(false);};
 
-  // Carregar dados do Supabase ao iniciar
+  // Carregar dados do Supabase quando autenticado
   useEffect(()=>{
+    if(!token) return; // só carrega se estiver logado
     load(true,"Carregando dados do banco...");
     dbGetAll()
       .then(data=>{ setUsuarios(data); load(false); })
       .catch(e=>{ err(e); });
-  },[]);
+  },[token]); // roda toda vez que o token mudar (login)
 
   // Salvar usuário no Supabase
   const salvarUsuario=useCallback(async d=>{
